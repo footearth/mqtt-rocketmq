@@ -1,0 +1,31 @@
+version: '3'
+
+vars:
+  compose: docker-compose -f ./rocketmq.yaml
+
+tasks:
+
+  help: task --list-all
+  default:
+    - task: help
+
+  dozzle:
+    - docker run -d
+        --name dozzle
+        --restart=always
+        --volume=/var/run/docker.sock:/var/run/docker.sock
+        -p 9880:8080
+        amir20/dozzle
+          --username admin
+          --password netserver
+
+  up:
+    - mkdir -p ./rocketmq/conf
+    - mkdir -p ./rocketmq/logs
+    - mkdir -p ./rocketmq/store
+
+    - '{{.compose}} up -d'
+
+  ps: '{{.compose}} ps -a'
+  stop: '{{.compose}} stop'
+  rm: '{{.compose}} rm -f'

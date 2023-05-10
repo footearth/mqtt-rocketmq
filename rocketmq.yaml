@@ -1,0 +1,65 @@
+version: '3.9'
+
+services:
+
+  emqx:
+    image: emqx/emqx
+    container_name: emqx
+    restart: always
+    ports:
+      - 1883:1883
+      - 8083:8083
+      - 8084:8084
+      - 8883:8883
+      - 18083:18083
+
+  mqnamesrv:
+    image: apache/rocketmq:4.9.4
+    container_name: rocketmq_namesrv
+    restart: always
+    ports:
+      - 9876:9876
+    volumes:
+      - ./rocketmq/logs:/opt/logs
+      - ./rocketmq/store:/opt/store
+    command: ./mqnamesrv
+
+  mqbroker:
+    image: apache/rocketmq:4.9.4
+    container_name: rocketmq_broker
+    restart: always
+    ports:
+      - 10909:10909
+      - 10911:10911
+    volumes:
+      - ./rocketmq/logs:/opt/logs
+      - ./rocketmq/store:/opt/store
+      - ./rocketmq/conf/broker.conf:/etc/rocketmq/broker.conf
+    environment:
+        NAMESRV_ADDR: "rocketmq_namesrv:9876"
+        JAVA_OPTS: " -Duser.home=/opt"
+        JAVA_OPT_EXT: "-server -Xms1024m -Xmx1024m -Xmn1024m"
+    command: ./mqbroker -c /etc/rocketmq/broker.conf
+    depends_on:
+      - mqnamesrv
+
+  mqconsumer:
+    image: apache/rocketmq:4.9.4
+    container_name: rocketmq_consumer
+    restart: always
+    environment:
+        NAMESRV_ADDR: "rocketmq_namesrv:9876"
+    command: ./tools.sh org.apache.rocketmq.example.quickstart.Consumer
+    depends_on:
+      - mqbroker
+
+  mqdashboard:
+    image: apacherocketmq/rocketmq-dashboard
+    container_name: rocketmq_dashboard
+    restart: always
+    ports:
+      - 18800:8080
+    environment:
+      JAVA_OPTS: "-Drocketmq.namesrv.addr=rocketmq_namesrv:9876"
+    depends_on:
+      - mqbroker
